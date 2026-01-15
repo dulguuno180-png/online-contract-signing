@@ -1,352 +1,261 @@
-function demoTwoPageDocument() {
-	var doc = new jsPDF();
-	doc.text(20, 20, 'Hello world!');
-	doc.text(20, 30, 'This is client-side Javascript, pumping out a PDF.');
-	doc.addPage();
-	doc.text(20, 20, 'Do you like that?');
-	
-	// Save the PDF
-	doc.save('Test.pdf');
+// ==================== STATE MANAGEMENT ====================
+let currentStep = 1;
+let formData = {};
+let hasSignature = false;
+
+// ==================== CANVAS SETUP ====================
+const canvas = document.getElementById('signatureCanvas');
+const ctx = canvas.getContext('2d');
+let isDrawing = false;
+
+ctx.strokeStyle = '#1a1a2e';
+ctx.lineWidth = 2.5;
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+// ==================== SIGNATURE EVENTS ====================
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('mouseleave', stopDrawing);
+
+canvas.addEventListener('touchstart', startDrawing);
+canvas.addEventListener('touchmove', draw);
+canvas.addEventListener('touchend', stopDrawing);
+
+function startDrawing(e) {
+    isDrawing = true;
+    hasSignature = true;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    e.preventDefault();
 }
 
-function demoLandscape() {
-	var doc = new jsPDF('landscape');
-	doc.text(20, 20, 'Hello landscape world!');
-
-	// Save the PDF
-	doc.save('Test.pdf');
+function draw(e) {
+    if (!isDrawing) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    e.preventDefault();
 }
 
-function demoFontSizes() {
-	var doc = new jsPDF();
-	doc.setFontSize(22);
-	doc.text(20, 20, 'This is a title');
-	
-	doc.setFontSize(16);
-	doc.text(20, 30, 'This is some normal sized text underneath.');
-	
-	doc.save('Test.pdf');
+function stopDrawing() {
+    isDrawing = false;
 }
 
-function demoFontTypes() {
-	var doc = new jsPDF();
-	
-	doc.text(20, 20, 'This is the default font.');
-	
-	doc.setFont("courier");
-	doc.setFontType("normal");
-	doc.text(20, 30, 'This is courier normal.');
-	
-	doc.setFont("times");
-	doc.setFontType("italic");
-	doc.text(20, 40, 'This is times italic.');
-	
-	doc.setFont("helvetica");
-	doc.setFontType("bold");
-	doc.text(20, 50, 'This is helvetica bold.');
-	
-	doc.setFont("courier");
-	doc.setFontType("bolditalic");
-	doc.text(20, 60, 'This is courier bolditalic.');
-	
-	doc.save('Test.pdf');
+function clearSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasSignature = false;
 }
 
-function demoTextColors() {
-	var doc = new jsPDF();
-
-	doc.setTextColor(100);
-	doc.text(20, 20, 'This is gray.');
-	
-	doc.setTextColor(150);
-	doc.text(20, 30, 'This is light gray.');
-	
-	doc.setTextColor(255,0,0);
-	doc.text(20, 40, 'This is red.');
-	
-	doc.setTextColor(0,255,0);
-	doc.text(20, 50, 'This is green.');
-	
-	doc.setTextColor(0,0,255);
-	doc.text(20, 60, 'This is blue.');
-	
-	// Output as Data URI
-	doc.output('datauri');
+// ==================== FORM VALIDATION ====================
+function isStepValid() {
+    if (currentStep === 1) {
+        return document.getElementById('fullName').value &&
+               document.getElementById('register').value &&
+               document.getElementById('phone').value &&
+               document.getElementById('email').value &&
+               document.getElementById('address').value;
+    } else if (currentStep === 2) {
+        return document.getElementById('courseType').value &&
+               document.getElementById('startDate').value &&
+               document.getElementById('totalFee').value;
+    } else if (currentStep === 3) {
+        return hasSignature && document.getElementById('termsAccepted').checked;
+    }
+    return false;
 }
 
-function demoMetadata() {
-	var doc = new jsPDF();
-	doc.text(20, 20, 'This PDF has a title, subject, author, keywords and a creator.');
-	
-	// Optional - set properties on the document
-	doc.setProperties({
-		title: 'Title',
-		subject: 'This is the subject',
-		author: 'James Hall',
-		keywords: 'generated, javascript, web 2.0, ajax',
-		creator: 'MEEE'
-	});
-	
-	doc.save('Test.pdf');
+function updateNextButton() {
+    const nextBtn = document.getElementById('nextBtn');
+    if (isStepValid()) {
+        nextBtn.disabled = false;
+    } else {
+        nextBtn.disabled = true;
+    }
 }
 
-function demoUserInput() {	
-	var name = prompt('What is your name?');
-	var multiplier = prompt('Enter a number:');
-	multiplier = parseInt(multiplier);
+// Add input listeners
+document.querySelectorAll('input, select').forEach(element => {
+    element.addEventListener('input', updateNextButton);
+    element.addEventListener('change', updateNextButton);
+});
 
-	var doc = new jsPDF();
-	doc.setFontSize(22);	
-	doc.text(20, 20, 'Questions');
-	doc.setFontSize(16);
-	doc.text(20, 30, 'This belongs to: ' + name);
-	
-	for(var i = 1; i <= 12; i ++) {
-		doc.text(20, 30 + (i * 10), i + ' x ' + multiplier + ' = ___');
-	}
-	
-	doc.addPage();
-	doc.setFontSize(22);
-	doc.text(20, 20, 'Answers');
-	doc.setFontSize(16);
-	
-	for (i = 1; i <= 12; i ++) {
-		doc.text(20, 30 + (i * 10), i + ' x ' + multiplier + ' = ' + (i * multiplier));
-	}
-	doc.save('Test.pdf');
-	
+// ==================== NAVIGATION ====================
+function nextStep() {
+    if (!isStepValid()) return;
+    
+    if (currentStep < 3) {
+        // Save data
+        saveFormData();
+        
+        // Update UI
+        currentStep++;
+        updateStepDisplay();
+        updateNextButton();
+    } else {
+        // Submit
+        submitForm();
+    }
 }
 
-function demoRectangles() {
-	var doc = new jsPDF();
-
-	doc.rect(20, 20, 10, 10); // empty square
-
-	doc.rect(40, 20, 10, 10, 'F'); // filled square
-	
-	doc.setDrawColor(255, 0, 0);
-	doc.rect(60, 20, 10, 10); // empty red square
-	
-	doc.setDrawColor(255, 0, 0);
-	doc.rect(80, 20, 10, 10, 'FD'); // filled square with red borders
-	
-	doc.setDrawColor(0);
-	doc.setFillColor(255, 0, 0);
-	doc.rect(100, 20, 10, 10, 'F'); // filled red square
-	
-	doc.setDrawColor(0);
-	doc.setFillColor(255, 0, 0);
-	doc.rect(120, 20, 10, 10, 'FD'); // filled red square with black borders
-
-	doc.setDrawColor(0);
-	doc.setFillColor(255, 255, 255);
-	doc.roundedRect(140, 20, 10, 10, 3, 3, 'FD'); //  Black sqaure with rounded corners
-
-	doc.save('Test.pdf');
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+        updateNextButton();
+    }
 }
 
-function demoLines() {
-	var doc = new jsPDF();
-
-	doc.line(20, 20, 60, 20); // horizontal line
-		
-	doc.setLineWidth(0.5);
-	doc.line(20, 25, 60, 25);
-	
-	doc.setLineWidth(1);
-	doc.line(20, 30, 60, 30);
-	
-	doc.setLineWidth(1.5);
-	doc.line(20, 35, 60, 35);
-	
-	doc.setDrawColor(255,0,0); // draw red lines
-	
-	doc.setLineWidth(0.1);
-	doc.line(100, 20, 100, 60); // vertical line
-	
-	doc.setLineWidth(0.5);
-	doc.line(105, 20, 105, 60);
-	
-	doc.setLineWidth(1);
-	doc.line(110, 20, 110, 60);
-	
-	doc.setLineWidth(1.5);
-	doc.line(115, 20, 115, 60);
-	
-	// Output as Data URI
-	doc.output('datauri');
+function updateStepDisplay() {
+    // Hide all steps
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.add('hidden');
+    
+    // Show current step
+    document.getElementById('step' + currentStep).classList.remove('hidden');
+    
+    // Update progress circles
+    for (let i = 1; i <= 3; i++) {
+        const circle = document.getElementById('step' + i + 'Circle');
+        const label = document.getElementById('step' + i + 'Label');
+        const line = document.getElementById('line' + i);
+        
+        if (i < currentStep) {
+            circle.className = 'step-circle completed';
+            circle.innerHTML = '<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            label.classList.remove('active');
+            if (line) line.classList.add('completed');
+        } else if (i === currentStep) {
+            circle.className = 'step-circle active';
+            circle.innerHTML = getStepIcon(i);
+            label.classList.add('active');
+        } else {
+            circle.className = 'step-circle inactive';
+            circle.innerHTML = getStepIcon(i);
+            label.classList.remove('active');
+            if (line) line.classList.remove('completed');
+        }
+    }
+    
+    // Update navigation buttons
+    const backBtn = document.getElementById('backBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (currentStep === 1) {
+        backBtn.classList.add('hidden');
+    } else {
+        backBtn.classList.remove('hidden');
+    }
+    
+    if (currentStep === 3) {
+        nextBtn.className = 'btn btn-success';
+        nextBtn.innerHTML = 'Гэрээ баталгаажуулах <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+    } else {
+        nextBtn.className = 'btn btn-primary';
+        nextBtn.innerHTML = 'Үргэлжлүүлэх <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
+    }
+    
+    // Update contract preview
+    if (currentStep === 3) {
+        updateContractPreview();
+    }
 }
 
-function demoCircles() {
-	var doc = new jsPDF();
-
-	doc.ellipse(40, 20, 10, 5);
-
-	doc.setFillColor(0,0,255);
-	doc.ellipse(80, 20, 10, 5, 'F');
-	
-	doc.setLineWidth(1);
-	doc.setDrawColor(0);
-	doc.setFillColor(255,0,0);
-	doc.circle(120, 20, 5, 'FD');
-
-	doc.save('Test.pdf');
-}
-
-function demoTriangles() {
-	var doc = new jsPDF();
-
-	doc.triangle(60, 100, 60, 120, 80, 110, 'FD');
-	
-	doc.setLineWidth(1);
-	doc.setDrawColor(255,0,0);
-	doc.setFillColor(0,0,255);
-	doc.triangle(100, 100, 110, 100, 120, 130, 'FD');
-	
-	doc.save('Test.pdf');
-}
-
-function demoImages() {
-	// Because of security restrictions, getImageFromUrl will
-	// not load images from other domains.  Chrome has added
-	// security restrictions that prevent it from loading images
-	// when running local files.  Run with: chromium --allow-file-access-from-files --allow-file-access
-	// to temporarily get around this issue.
-	var getImageFromUrl = function(url, callback) {
-		var img = new Image(), data, ret = {
-			data: null,
-			pending: true
-		};
-		
-		img.onError = function() {
-			throw new Error('Cannot load image: "'+url+'"');
-		};
-		img.onload = function() {
-			var canvas = document.createElement('canvas');
-			document.body.appendChild(canvas);
-			canvas.width = img.width;
-			canvas.height = img.height;
-
-			var ctx = canvas.getContext('2d');
-			ctx.drawImage(img, 0, 0);
-			// Grab the image as a jpeg encoded in base64, but only the data
-			data = canvas.toDataURL('image/jpeg').slice('data:image/jpeg;base64,'.length);
-			// Convert the data to binary form
-			data = atob(data);
-			document.body.removeChild(canvas);
-
-			ret['data'] = data;
-			ret['pending'] = false;
-			if (typeof callback === 'function') {
-				callback(data);
-			}
-		};
-		img.src = url;
-
-		return ret;
-	};
-
-	// Since images are loaded asyncronously, we must wait to create
-	// the pdf until we actually have the image data.
-	// If we already had the jpeg image binary data loaded into
-	// a string, we create the pdf without delay.
-	var createPDF = function(imgData) {
-		var doc = new jsPDF();
-
-		doc.addImage(imgData, 'JPEG', 10, 10, 50, 50);
-		doc.addImage(imgData, 'JPEG', 70, 10, 100, 120);
-
-		doc.save('output.pdf');
-
-	}
-
-	getImageFromUrl('thinking-monkey.jpg', createPDF);
-}
-
-function demoStringSplitting() {
-
-	var pdf = new jsPDF('p','in','letter')
-	, sizes = [12, 16, 20]
-	, fonts = [['Times','Roman'],['Helvetica',''], ['Times','Italic']]
-	, font, size, lines
-	, margin = 0.5 // inches on a 8.5 x 11 inch sheet.
-	, verticalOffset = margin
-	, loremipsum = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus id eros turpis. Vivamus tempor urna vitae sapien mollis molestie. Vestibulum in lectus non enim bibendum laoreet at at libero. Etiam malesuada erat sed sem blandit in varius orci porttitor. Sed at sapien urna. Fusce augue ipsum, molestie et adipiscing at, varius quis enim. Morbi sed magna est, vel vestibulum urna. Sed tempor ipsum vel mi pretium at elementum urna tempor. Nulla faucibus consectetur felis, elementum venenatis mi mollis gravida. Aliquam mi ante, accumsan eu tempus vitae, viverra quis justo.\n\nProin feugiat augue in augue rhoncus eu cursus tellus laoreet. Pellentesque eu sapien at diam porttitor venenatis nec vitae velit. Donec ultrices volutpat lectus eget vehicula. Nam eu erat mi, in pulvinar eros. Mauris viverra porta orci, et vehicula lectus sagittis id. Nullam at magna vitae nunc fringilla posuere. Duis volutpat malesuada ornare. Nulla in eros metus. Vivamus a posuere libero.'
-
-	// Margins:
-	pdf.setDrawColor(0, 255, 0)
-		.setLineWidth(1/72)
-		.line(margin, margin, margin, 11 - margin)
-		.line(8.5 - margin, margin, 8.5-margin, 11-margin)
-
-	// the 3 blocks of text
-	for (var i in fonts){
-		if (fonts.hasOwnProperty(i)) {
-			font = fonts[i]
-			size = sizes[i]
-
-			lines = pdf.setFont(font[0], font[1])
-						.setFontSize(size)
-						.splitTextToSize(loremipsum, 7.5)
-			// Don't want to preset font, size to calculate the lines?
-			// .splitTextToSize(text, maxsize, options)
-			// allows you to pass an object with any of the following:
-			// {
-			// 	'fontSize': 12
-			// 	, 'fontStyle': 'Italic'
-			// 	, 'fontName': 'Times'
-			// }
-			// Without these, .splitTextToSize will use current / default
-			// font Family, Style, Size.
-			console.log(lines);
-			pdf.text(0.5, verticalOffset + size / 72, lines)
-
-			verticalOffset += (lines.length + 0.5) * size / 72
-		}
-	}
-
-	pdf.save('Test.pdf');
-}
-
-function demoFromHTML() {
-	alert();
-	var pdf = new jsPDF('p', 'pt', 'letter')
-
-	// source can be HTML-formatted string, or a reference
-	// to an actual DOM element from which the text will be scraped.
-	, source = $('.contract-body').html()
-
-	// we support special element handlers. Register them with jQuery-style 
-	// ID selector for either ID or node name. ("#iAmID", "div", "span" etc.)
-	// There is no support for any other type of selectors 
-	// (class, of compound) at this time.
-	, specialElementHandlers = {
-		// element with id of "bypass" - jQuery style selector
-		'#bypassme': function(element, renderer){
-			// true = "handled elsewhere, bypass text extraction"
-			return true
-		}
-	}
-
-	margins = {
-      top: 80,
-      bottom: 60,
-      left: 40,
-      width: 500
+function getStepIcon(step) {
+    const icons = {
+        1: '<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>',
+        2: '<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>',
+        3: '<svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
     };
-    // all coords and widths are in jsPDF instance's declared units
-    // 'inches' in this case
-    pdf.fromHTML(
-    	source // HTML string or DOM elem ref.
-    	, margins.left // x coord
-    	, margins.top // y coord
-    	, {
-    		'width': margins.width // max width of content on PDF
-    		, 'elementHandlers': specialElementHandlers
-    	},
-    	function (dispose) {
-          pdf.save('Test.pdf');
-        },
-    	margins
-    )
+    return icons[step];
 }
+
+// ==================== DATA MANAGEMENT ====================
+function saveFormData() {
+    formData = {
+        fullName: document.getElementById('fullName').value,
+        register: document.getElementById('register').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        address: document.getElementById('address').value,
+        facebook: document.getElementById('facebook').value,
+        gender: document.getElementById('gender').value,
+        age: document.getElementById('age').value,
+        courseType: document.getElementById('courseType').value,
+        startDate: document.getElementById('startDate').value,
+        duration: document.getElementById('duration').value,
+        format: document.getElementById('format').value,
+        totalFee: document.getElementById('totalFee').value,
+        monthlyFee: document.getElementById('monthlyFee').value,
+        discount: document.getElementById('discount').value
+    };
+}
+
+function updateContractPreview() {
+    document.getElementById('contractName').textContent = formData.fullName || '[Нэр]';
+    document.getElementById('contractRegister').textContent = formData.register || '[Регистр]';
+    document.getElementById('contractDate').textContent = formData.startDate || '[огноо]';
+    document.getElementById('contractDuration').textContent = formData.duration || '[хугацаа]';
+    
+    const courseSelect = document.getElementById('courseType');
+    const courseText = courseSelect.options[courseSelect.selectedIndex]?.text || '[сургалт]';
+    document.getElementById('contractCourse').textContent = courseText;
+    
+    document.getElementById('contractFee').textContent = formData.totalFee || '[төлбөр]';
+    document.getElementById('contractFee2').textContent = formData.totalFee || '[нийт төлбөр]';
+    
+    const formatMap = { 'offline': 'танхим', 'online': 'онлайн', 'hybrid': 'холимог' };
+    document.getElementById('contractFormat').textContent = formatMap[formData.format] || '[хэлбэр]';
+}
+
+// ==================== FORM SUBMISSION ====================
+function submitForm() {
+    saveFormData();
+    
+    const signatureData = canvas.toDataURL();
+    const contractData = {
+        ...formData,
+        signature: signatureData,
+        submittedDate: new Date().toISOString()
+    };
+    
+    console.log('Гэрээ баталгаажлаа:', contractData);
+    
+    // Update success screen
+    const courseSelect = document.getElementById('courseType');
+    const courseText = courseSelect.options[courseSelect.selectedIndex]?.text;
+    
+    document.getElementById('successName').textContent = formData.fullName;
+    document.getElementById('successCourse').textContent = courseText;
+    document.getElementById('successEmail').textContent = formData.email;
+    
+    // Show success screen
+    document.querySelector('.container').classList.add('hidden');
+    document.getElementById('successScreen').classList.remove('hidden');
+    
+    // BACKEND ХОЛБОЛТ ЭНЭ ХЭСЭГТ НЭМНЭ:
+    // fetch('/api/submit-contract', { 
+    //     method: 'POST', 
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(contractData) 
+    // })
+}
+
+// ==================== INITIALIZATION ====================
+// Set min date for startDate
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('startDate').setAttribute('min', today);
+
+// Initialize
+updateNextButton();
